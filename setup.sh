@@ -95,11 +95,9 @@ print_success "API keys saved to .api-keys file"
 # Create docker-compose.yml
 print_info "Creating Docker Compose configuration..."
 cat > docker-compose.yml << 'EOF'
-version: '3.8'
-
 services:
   stalwart:
-    image: stalwartlabs/mail-server:latest
+    image: stalwartlabs/stalwart:latest
     container_name: stalwart-mail
     hostname: mail.yourdomain.com
     ports:
@@ -141,6 +139,7 @@ services:
 networks:
   mail-network:
     driver: bridge
+
 EOF
 print_success "Docker Compose configuration created"
 
