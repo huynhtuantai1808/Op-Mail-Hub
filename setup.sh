@@ -142,7 +142,14 @@ networks:
 
 EOF
 print_success "Docker Compose configuration created"
+print_info "Creating Dockerfile configuration..."
+cat > Dockerfile.stalwart << 'EOF'
+FROM stalwartlabs/stalwart:latest
 
+COPY ./config /opt/stalwart-mail/etc
+WORKDIR /opt/stalwart-mail
+EOF
+print_success "Dockerfile configuration created"
 # Create basic Stalwart config
 print_info "Creating Stalwart configuration..."
 cat > config/config.toml << 'EOF'
