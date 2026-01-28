@@ -96,10 +96,22 @@ print_success "API keys saved to .api-keys file"
 print_info "Creating Docker Compose configuration..."
 cat > docker-compose.yml << 'EOF'
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: stalwart-db
+    environment:
+      POSTGRES_USER: stalwart
+      POSTGRES_PASSWORD: stalwartpass
+      POSTGRES_DB: stalwart
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    networks:
+      - mail-network
+
   stalwart:
     image: stalwartlabs/stalwart:latest
     container_name: stalwart-mail
-    hostname: mail.yourdomain.com
+    hostname: mail.tuantai.site
     ports:
       - "25:25"
       - "587:587"
@@ -109,13 +121,17 @@ services:
       - "4190:4190"
       - "8080:8080"
     volumes:
-      - ./data:/opt/stalwart-mail
-      - ./config:/opt/stalwart-mail/etc
+      - ./data:/opt/stalwart
+      - ./config:/opt/stalwart/etc
+      - ./certs:/opt/stalwart/etc/tls:ro
     environment:
-      - HOSTNAME=mail.yourdomain.com
+      - HOSTNAME=mail.tuantai.site
+      - DATABASE_URL=postgres://stalwart:stalwartpass@db:5432/stalwart
     restart: unless-stopped
     networks:
       - mail-network
+    depends_on:
+      - db
 
   api-gateway:
     build: ./api-gateway
@@ -124,6 +140,14 @@ services:
       - "3000:3000"
     env_file:
       - ./api-gateway/.env
+    environment:
+      - TRUST_PROXY=true                       # set true nếu bạn có reverse proxy/ingress
+      - SMTP_CA_FILE=/etc/ssl/certs/mail_fullchain.pem
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/mail_fullchain.pem
+      - SMTP_ALLOW_SELF_SIGNED=false            # chỉ true tạm thời khi cần
+    volumes:
+      - ./api-gateway:/app
+      - ./certs/mail_fullchain.pem:/etc/ssl/certs/mail_fullchain.pem:ro
     depends_on:
       - stalwart
     restart: unless-stopped
@@ -140,6 +164,7 @@ networks:
   mail-network:
     driver: bridge
 
+
 EOF
 print_success "Docker Compose configuration created"
 print_info "Creating Dockerfile configuration..."
@@ -154,7 +179,7 @@ print_success "Dockerfile configuration created"
 print_info "Creating Stalwart configuration..."
 cat > config/config.toml << 'EOF'
 [server]
-hostname = "mail.yourdomain.com"
+hostname = "mail.youdomain.com"
 
 [server.listener.smtp]
 bind = ["0.0.0.0:25"]
@@ -183,14 +208,12 @@ tls.implicit = true
 bind = ["0.0.0.0:8080"]
 protocol = "http"
 
-[storage]
-data = "sqlite"
-blob = "sqlite"
-lookup = "sqlite"
-fts = "sqlite"
+[store]
+type = "postgres"
+dsn = "postgres://stalwart:stalwartpass@db:5432/stalwart"
 
-[storage.sqlite]
-path = "/opt/stalwart-mail/data/index.sqlite3"
+[spam_filter]
+model_path = "/opt/stalwart/etc/tls/spam_model.bin"
 
 [session.auth]
 mechanisms = ["plain", "login"]
@@ -211,6 +234,7 @@ expire = "5d"
 [report]
 path = "/opt/stalwart-mail/reports"
 hash = 64
+
 EOF
 print_success "Stalwart configuration created"
 
