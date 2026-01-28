@@ -212,8 +212,14 @@ protocol = "http"
 type = "postgres"
 dsn = "postgres://stalwart:stalwartpass@db:5432/stalwart"
 
-[spam_filter]
-model_path = "/opt/stalwart/etc/tls/spam_model.bin"
+# Option A: disable spam filter until you have a model
+# (remove or comment the block below)
+# [spam_filter]
+# model_path = "/opt/stalwart/etc/tls/spam_model.bin"
+
+# Option B: if you have a model, place it at ./certs/spam_model.bin and enable:
+# [spam_filter]
+# model_path = "/opt/stalwart/etc/tls/spam_model.bin"
 
 [session.auth]
 mechanisms = ["plain", "login"]
@@ -223,7 +229,8 @@ require = true
 require = true
 
 [queue]
-path = "/opt/stalwart-mail/queue"
+# use same base path as other mounts
+path = "/opt/stalwart/queue"
 hash = 64
 
 [queue.schedule]
@@ -232,7 +239,7 @@ notify = ["1d", "3d"]
 expire = "5d"
 
 [report]
-path = "/opt/stalwart-mail/reports"
+path = "/opt/stalwart/reports"
 hash = 64
 
 EOF
